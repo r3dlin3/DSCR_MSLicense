@@ -41,15 +41,15 @@ function Get-TargetResource {
 
         [parameter()]
         [bool]
-        $Force = $false
+        $Force = $false,
 
         # [parameter()]
         # [bool]
         # $IsKmsClient = $false,
 
-        # [parameter()]
-        # [string]
-        # $KmsServer
+        [parameter()]
+        [string]
+        $KmsServer
     )
 
     $GetRes = @{
@@ -57,7 +57,7 @@ function Get-TargetResource {
         ProductKey        = ''
         Activate          = $false
         #IsKmsClient = $false
-        #KmsServer = $KmsServer
+        KmsServer = $KmsServer
         PartialProductKey = ''
         LicenseStatus     = ''
         OS                = ''
@@ -110,7 +110,11 @@ function Set-TargetResource {
 
         [parameter()]
         [bool]
-        $Force = $false
+        $Force = $false,
+
+        [parameter()]
+        [string]
+        $KmsServer
     )
     # $ErrorActionPreference = 'Stop'
 
@@ -135,31 +139,36 @@ function Set-TargetResource {
     if ($Ensure -eq 'Absent') {
         # Remove Product Key
         $ExitCode = (Start-Command -FilePath $Cscript -ArgumentList ($Slmgr, '-upk')).ExitCode
-        if ($ExitCode -ne 0) {Write-Error ('Error happend when removing the product key')}
+        if ($ExitCode -ne 0) {Write-Error ('Error happened when removing the product key')}
         else {Write-Verbose ('Remove the product key succeeded')}
 
         # Remove Product Key from registry
         $ExitCode = (Start-Command -FilePath $Cscript -ArgumentList ($Slmgr, '-cpky')).ExitCode
-        if ($ExitCode -ne 0) {Write-Error ('Error happend when removing the product key from registry')}
+        if ($ExitCode -ne 0) {Write-Error ('Error happened when removing the product key from registry')}
         else {Write-Verbose ('Remove the product key from registry succeeded')}
     }
     else {
-        $isKeyChenged = $false
+        if ($KmsServer) {
+            $ExitCode = (Start-Command -FilePath $Cscript -ArgumentList ($Slmgr, '-skms', $KmsServer)).ExitCode
+            if ($ExitCode -ne 0) {Write-Error ('Error happened when setting the name and/or the port for the KMS computer this machine will use')}
+            else {Write-Verbose ('The name and/or the port for the KMS computer this machine will use has been set')}
+        }
+        $isKeyChanged = $false
 
         $local:tmpPPKey = $ProductKey.Substring($ProductKey.Length - 5, 5)  # Last 5 chars
         if (($cState.Ensure -eq 'Absent') -or ($cState.PartialProductKey -ne $tmpPPKey) -or $Force) {
             # Install Product Key
             $ExitCode = (Start-Command -FilePath $Cscript -ArgumentList ($Slmgr, '-ipk', $ProductKey)).ExitCode
-            if ($ExitCode -ne 0) {Write-Error ('Error happend when installing the product key')}
+            if ($ExitCode -ne 0) {Write-Error ('Error happened when installing the product key')}
             else {Write-Verbose ('Install the product key succeeded')}
-            $isKeyChenged = $true
+            $isKeyChanged = $true
         }
 
         if ($Activate) {
-            if ($isKeyChenged -or (!$cState.Activate)) {
+            if ($isKeyChanged -or (!$cState.Activate)) {
                 #Activation
                 $ExitCode = (Start-Command -FilePath $Cscript -ArgumentList ($Slmgr, '-ato')).ExitCode
-                if ($ExitCode -ne 0) {Write-Error ('Error happend when try to activation')}
+                if ($ExitCode -ne 0) {Write-Error ('Error happened when try to activation')}
                 else {Write-Verbose ('Activation succeeded')}
             }
         }
@@ -187,7 +196,11 @@ function Test-TargetResource {
 
         [parameter()]
         [bool]
-        $Force = $false
+        $Force = $false,
+
+        [parameter()]
+        [string]
+        $KmsServer
     )
 
     # Test the product key format (XXXXX-XXXXX-XXXXX-XXXXX-XXXXX)

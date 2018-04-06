@@ -5,6 +5,7 @@ class cWindowsLicense : OMI_BaseResource
     [Write, ValueMap{"Present","Absent"}, Values{"Present","Absent"}] String Ensure;
     [Key] String ProductKey;
     [Write] Boolean Activate;
+    [Write] String KmsServer;
     [Write] Boolean Force;
     [Read] String PartialProductKey;
     [Read] String LicenseStatus;
